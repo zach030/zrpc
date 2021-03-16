@@ -1,13 +1,12 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net"
+	"sync"
 	"time"
 	"zrpc"
-	"zrpc/codec"
 )
 
 func startServer(addr chan string) {
@@ -22,29 +21,26 @@ func startServer(addr chan string) {
 }
 
 func main() {
+	log.SetFlags(0)
 	addr := make(chan string)
 	go startServer(addr)
-
-	// in fact, following code is like a simple zrpc client
-	conn, _ := net.Dial("tcp", <-addr)
-	defer func() {
-		_ = conn.Close()
-	}()
+	client, _ := zrpc.Dial("tcp", <-addr)
+	defer func() { _ = client.Close() }()
 
 	time.Sleep(time.Second)
-	// send options
-	_ = json.NewEncoder(conn).Encode(zrpc.DefaultOption)
-	cc := codec.NewGobCodec(conn)
 	// send request & receive response
+	var wg sync.WaitGroup
 	for i := 0; i < 5; i++ {
-		h := &codec.Header{
-			ServiceMethod: "Foo.Sum",
-			SeqNo:           uint64(i),
-		}
-		_ = cc.Write(h, fmt.Sprintf("zrpc req %d", h.SeqNo))
-		_ = cc.ReadHeader(h)
-		var reply string
-		_ = cc.ReadBody(&reply)
-		log.Println("reply:", reply)
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			args := fmt.Sprintf("zrpc req %d", i)
+			var reply string
+			if err := client.Call("Foo.Sum", args, &reply); err != nil {
+				log.Fatal("call Foo.Sum error:", err)
+			}
+			log.Println("reply:", reply)
+		}(i)
 	}
+	wg.Wait()
 }

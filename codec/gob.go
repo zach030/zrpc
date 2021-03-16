@@ -29,6 +29,7 @@ func (c *GobCodec) ReadHeader(h *Header) error {
 }
 
 func (c *GobCodec) ReadBody(body interface{}) error {
+	// decode to store in body
 	return c.decode.Decode(body)
 }
 
