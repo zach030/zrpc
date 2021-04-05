@@ -7,11 +7,12 @@ import (
 	"log"
 )
 
+// implement of gob-type codec instance
 type GobCodec struct {
-	conn io.ReadWriteCloser
-	buf  *bufio.Writer
-	decode  *gob.Decoder
-	encode  *gob.Encoder
+	conn io.ReadWriteCloser   // connection over rpc
+	buf  *bufio.Writer        // buffer for read/write
+	decode  *gob.Decoder      // gob-type decode func
+	encode  *gob.Encoder      // gob-type encode func
 }
 
 func NewGobCodec(conn io.ReadWriteCloser) Codec {
@@ -25,6 +26,7 @@ func NewGobCodec(conn io.ReadWriteCloser) Codec {
 }
 
 func (c *GobCodec) ReadHeader(h *Header) error {
+	// decode header to store in h instance
 	return c.decode.Decode(h)
 }
 
