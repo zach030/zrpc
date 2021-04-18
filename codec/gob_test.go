@@ -1,23 +1,31 @@
 package codec
 
 import (
-	"bytes"
-	"encoding/gob"
-	"fmt"
+	"log"
+	"reflect"
+	"strings"
+	"sync"
 	"testing"
 )
 
 func TestGobCodec_Write(t *testing.T) {
-	data := "ABC"
-	buf := new(bytes.Buffer)
-
-	//glob encoding
-	enc := gob.NewEncoder(buf)
-	enc.Encode(data)
-	fmt.Println("Encoded:", data)  //Encoded: ABC
-
-	//glob decoding
-	d := gob.NewDecoder(buf)
-	d.Decode(data)
-	fmt.Println("Decoded: ", data) //Decoded:  ABC
+	var wg sync.WaitGroup
+	typ := reflect.TypeOf(&wg)
+	for i := 0; i < typ.NumMethod(); i++ {
+		method := typ.Method(i)
+		argv := make([]string, 0, method.Type.NumIn())
+		returns := make([]string, 0, method.Type.NumOut())
+		// j 从 1 开始，第 0 个入参是 wg 自己。
+		for j := 1; j < method.Type.NumIn(); j++ {
+			argv = append(argv, method.Type.In(j).Name())
+		}
+		for j := 0; j < method.Type.NumOut(); j++ {
+			returns = append(returns, method.Type.Out(j).Name())
+		}
+		log.Printf("func (w *%s) %s(%s) %s",
+			typ.Elem().Name(),
+			method.Name,
+			strings.Join(argv, ","),
+			strings.Join(returns, ","))
+	}
 }
