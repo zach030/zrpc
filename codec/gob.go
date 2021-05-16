@@ -4,57 +4,54 @@ import (
 	"bufio"
 	"encoding/gob"
 	"io"
-	"log"
+	"zrpc/logger"
 )
 
-// implement of gob-type codec instance
+// codec implement by codec func
 type GobCodec struct {
-	conn io.ReadWriteCloser   // connection over rpc
-	buf  *bufio.Writer        // buffer for read/write
-	decode  *gob.Decoder      // gob-type decode func
-	encode  *gob.Encoder      // gob-type encode func
+	conn   io.ReadWriteCloser
+	buf    *bufio.Writer
+	decode *gob.Decoder // gob decode API
+	encode *gob.Encoder // gob encode API
 }
 
-func NewGobCodec(conn io.ReadWriteCloser) Codec {
-	buf := bufio.NewWriter(conn)
-	return &GobCodec{
-		conn: conn,
-		buf:  buf,
-		decode:  gob.NewDecoder(conn),
-		encode:  gob.NewEncoder(buf),
-	}
+func (g GobCodec) Close() error {
+	return g.conn.Close()
 }
 
-func (c *GobCodec) ReadHeader(h *Header) error {
-	// decode header to store in h instance
-	return c.decode.Decode(h)
+// decode header part
+func (g GobCodec) ReadHeader(header *Header) error {
+	return g.decode.Decode(header)
 }
 
-func (c *GobCodec) ReadBody(body interface{}) error {
-	// decode to store in body
-	return c.decode.Decode(body)
+func (g GobCodec) ReadBody(i interface{}) error {
+	return g.decode.Decode(i)
 }
 
-func (c *GobCodec) Write(h *Header, body interface{}) (err error) {
+func (g GobCodec) Write(header *Header, body interface{}) error {
 	defer func() {
-		_ = c.buf.Flush()
+		err := g.buf.Flush()
 		if err != nil {
-			_ = c.Close()
+			_ = g.Close()
 		}
 	}()
-	if err := c.encode.Encode(h); err != nil {
-		log.Println("rpc codec: gob error encoding header:", err)
+	if err := g.encode.Encode(header); err != nil {
+		logger.Error("gob encode header err:%v", err)
 		return err
 	}
-	if err := c.encode.Encode(body); err != nil {
-		log.Println("rpc codec: gob error encoding body:", err)
+	if err := g.encode.Encode(body); err != nil {
+		logger.Error("gob encode body err:%v", err)
 		return err
 	}
 	return nil
 }
 
-func (c *GobCodec) Close() error {
-	return c.conn.Close()
+func NewGobCodec(conn io.ReadWriteCloser) Codec {
+	buf := bufio.NewWriter(conn)
+	return GobCodec{
+		conn:   conn,
+		buf:    buf,
+		decode: gob.NewDecoder(conn),
+		encode: gob.NewEncoder(conn),
+	}
 }
-
-

@@ -4,9 +4,10 @@ import (
 	"bufio"
 	"encoding/json"
 	"io"
-	"log"
+	"zrpc/logger"
 )
 
+// codec implement by json func
 type JsonCodec struct {
 	conn   io.ReadWriteCloser
 	buf    *bufio.Writer
@@ -14,40 +15,45 @@ type JsonCodec struct {
 	encode *json.Encoder
 }
 
+func (c JsonCodec) Close() error {
+	return c.conn.Close()
+}
+
+func (c JsonCodec) ReadHeader(header *Header) error {
+	return c.decode.Decode(header)
+}
+
+func (c JsonCodec) ReadBody(body interface{}) error {
+	return c.decode.Decode(body)
+}
+
+func (c JsonCodec) Write(header *Header, i interface{}) error {
+	defer func() {
+		err := c.buf.Flush()
+		if err != nil {
+			logger.Error("flush buf failed,err:%v", err)
+			return
+		}
+	}()
+
+	if err := c.encode.Encode(header); err != nil {
+		logger.Error("json encode header failed,err:%v",err)
+		return err
+	}
+	if err := c.encode.Encode(i); err != nil {
+		logger.Error("json encode body failed,err:%v",err)
+		return err
+	}
+
+	return nil
+}
+
 func NewJsonCodec(conn io.ReadWriteCloser) Codec {
-	return &JsonCodec{
+	buf := bufio.NewWriter(conn)
+	return JsonCodec{
 		conn:   conn,
-		buf:    bufio.NewWriter(conn),
+		buf:    buf,
 		decode: json.NewDecoder(conn),
 		encode: json.NewEncoder(conn),
 	}
-}
-func (j JsonCodec) Close() error {
-	return j.conn.Close()
-}
-
-func (j JsonCodec) ReadHeader(header *Header) error {
-	return j.decode.Decode(header)
-}
-
-func (j JsonCodec) ReadBody(body interface{}) error {
-	return j.decode.Decode(body)
-}
-
-func (j JsonCodec) Write(header *Header, body interface{}) error {
-	defer func() {
-		err := j.buf.Flush()
-		if err != nil {
-			_ = j.Close()
-		}
-	}()
-	if err := j.encode.Encode(header); err != nil {
-		log.Println("rpc codec: json error encoding header,", err)
-		return err
-	}
-	if err := j.encode.Encode(body); err != nil {
-		log.Println("rpc codec: json error encoding body,", err)
-		return err
-	}
-	return nil
 }

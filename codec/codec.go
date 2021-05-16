@@ -2,37 +2,33 @@ package codec
 
 import "io"
 
-// struct of rpc message header
-type Header struct {
-	ServiceMethod string // service name "service.method"
-	SeqNo         uint64 // request no
-	ErrMsg        string // error msg
-}
-
-// 实rpc框架中编解码的部分，
-// interface of codec
-type Codec interface {
-	io.Closer
-	ReadHeader(*Header) error
-	ReadBody(interface{}) error
-	Write(*Header, interface{}) error
-}
-
-type NewCodecFunc func(io.ReadWriteCloser) Codec
-
-type Type string
-
 const (
-	GobType  Type = "application/gob"
-	JsonType Type = "application/json" // not implemented
+	JsonType = "application/json"
+	GobType  = "application/gob"
 )
 
-// all codec map
-var NewCodecFuncMap map[Type]NewCodecFunc
+// call ("service.method", in, out)
+type Header struct {
+	ServiceMethod string // "Example.New" implement by Go "reflect"
+	Seq           uint64 // request seq number for client
+	Error         string
+}
 
-// 这里的map存放的value不是实例，而是构造函数
+// codec interface for extension
+type Codec interface {
+	io.Closer
+	ReadHeader(header *Header) error  // parse header for codec interface
+	ReadBody(interface{}) error       // to be codec by specific func
+	Write(*Header, interface{}) error // write header and body
+}
+
+var NewCodecFuncMap map[string]NewCodecFunc
+
+// new-function as a type
+type NewCodecFunc func(closer io.ReadWriteCloser) Codec
+
 func init() {
-	NewCodecFuncMap = make(map[Type]NewCodecFunc)
+	NewCodecFuncMap = make(map[string]NewCodecFunc)
 	NewCodecFuncMap[GobType] = NewGobCodec
 	NewCodecFuncMap[JsonType] = NewJsonCodec
 }
