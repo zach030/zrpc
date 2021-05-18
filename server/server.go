@@ -2,11 +2,13 @@ package server
 
 import (
 	"encoding/json"
+	"gin-master/gin-master"
 	"io"
 	"net"
 	"reflect"
 	"strings"
 	"sync"
+	"time"
 	"zrpc"
 	"zrpc/codec"
 	"zrpc/logger"
@@ -15,6 +17,7 @@ import (
 
 // provide method to call
 type Server struct {
+	engine     *gin.Engine
 	serviceMap sync.Map
 }
 
@@ -98,11 +101,11 @@ func (s *Server) ServeConn(conn net.Conn) {
 		return
 	}
 	logger.Info("rpc server successfully parse option, start to codec request...")
-	s.serveCodec(codecFunc(conn))
+	s.serveCodec(codecFunc(conn), &opt)
 }
 
 // 一个连接存在多个请求(header+body)，需要等到全部请求处理后退出
-func (s *Server) serveCodec(cc codec.Codec) {
+func (s *Server) serveCodec(cc codec.Codec, opt *codec.Option) {
 	sending := new(sync.Mutex) // make sure to send a complete response
 	wg := new(sync.WaitGroup)  // wait until all request are handled
 	for {
@@ -117,7 +120,7 @@ func (s *Server) serveCodec(cc codec.Codec) {
 			continue
 		}
 		wg.Add(1)
-		go s.handleRequest(cc, req, sending, wg)
+		go s.handleRequest(cc, req, sending, wg, opt)
 	}
 	wg.Wait()
 	_ = cc.Close()
@@ -177,15 +180,40 @@ func (s *Server) readRequestBody(cc codec.Codec, body interface{}) error {
 type InvalidRequest struct{}
 
 //todo 在此处实现RPC的函数调用过程
-func (s *Server) handleRequest(cc codec.Codec, req *Request, sending *sync.Mutex, wg *sync.WaitGroup) {
+func (s *Server) handleRequest(cc codec.Codec, req *Request, sending *sync.Mutex, wg *sync.WaitGroup, opt *codec.Option) {
 	defer wg.Done()
-	err := req.Srv.Call(req.MType, req.argv, req.replyv)
-	if err != nil {
-		req.Header.Error = err.Error()
-		s.sendResponse(cc, req.Header, InvalidRequest{}, sending)
+
+	called := make(chan struct{}, 1)
+	sent := make(chan struct{}, 1)
+
+	go func() {
+		err := req.Srv.Call(req.MType, req.argv, req.replyv)
+		called <- struct{}{}
+		if err != nil {
+			req.Header.Error = err.Error()
+			s.sendResponse(cc, req.Header, InvalidRequest{}, sending)
+			sent <- struct{}{}
+			return
+		}
+		s.sendResponse(cc, req.Header, req.replyv.Interface(), sending)
+		sent <- struct{}{}
+	}()
+
+	if opt.HandleTimeout == 0 {
+		called <- struct{}{}
+		sent <- struct{}{}
 		return
 	}
-	s.sendResponse(cc, req.Header, req.replyv.Interface(), sending)
+
+	select {
+	case <-time.After(opt.HandleTimeout):
+		logger.Error(zrpc.ServerHandleRequestTimeOut.Error())
+		s.sendResponse(cc, req.Header, &InvalidRequest{}, sending)
+		return
+	case <-called:
+		<-sent
+	}
+
 }
 
 // 需要加锁，不能并发

@@ -20,6 +20,7 @@ var DefaultOpt = &Option{
 	MagicNumber:    ZRpcMagicNumber,
 	CodecType:      GobType,
 	ConnectTimeout: time.Second * 10,
+	HandleTimeout:  time.Second * 5,
 }
 
 func ParseOptions(opts ...*Option) (*Option, error) {
