@@ -15,20 +15,20 @@ type GobCodec struct {
 	encode *gob.Encoder // gob encode API
 }
 
-func (g GobCodec) Close() error {
+func (g *GobCodec) Close() error {
 	return g.conn.Close()
 }
 
 // decode header part
-func (g GobCodec) ReadHeader(header *Header) error {
+func (g *GobCodec) ReadHeader(header *Header) error {
 	return g.decode.Decode(header)
 }
 
-func (g GobCodec) ReadBody(i interface{}) error {
+func (g *GobCodec) ReadBody(i interface{}) error {
 	return g.decode.Decode(i)
 }
 
-func (g GobCodec) Write(header *Header, body interface{}) error {
+func (g *GobCodec) Write(header *Header, body interface{}) error {
 	defer func() {
 		err := g.buf.Flush()
 		if err != nil {
@@ -48,7 +48,7 @@ func (g GobCodec) Write(header *Header, body interface{}) error {
 
 func NewGobCodec(conn io.ReadWriteCloser) Codec {
 	buf := bufio.NewWriter(conn)
-	return GobCodec{
+	return &GobCodec{
 		conn:   conn,
 		buf:    buf,
 		decode: gob.NewDecoder(conn),

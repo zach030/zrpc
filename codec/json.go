@@ -15,19 +15,19 @@ type JsonCodec struct {
 	encode *json.Encoder
 }
 
-func (c JsonCodec) Close() error {
+func (c *JsonCodec) Close() error {
 	return c.conn.Close()
 }
 
-func (c JsonCodec) ReadHeader(header *Header) error {
+func (c *JsonCodec) ReadHeader(header *Header) error {
 	return c.decode.Decode(header)
 }
 
-func (c JsonCodec) ReadBody(body interface{}) error {
+func (c *JsonCodec) ReadBody(body interface{}) error {
 	return c.decode.Decode(body)
 }
 
-func (c JsonCodec) Write(header *Header, i interface{}) error {
+func (c *JsonCodec) Write(header *Header, i interface{}) error {
 	defer func() {
 		err := c.buf.Flush()
 		if err != nil {
@@ -50,7 +50,7 @@ func (c JsonCodec) Write(header *Header, i interface{}) error {
 
 func NewJsonCodec(conn io.ReadWriteCloser) Codec {
 	buf := bufio.NewWriter(conn)
-	return JsonCodec{
+	return &JsonCodec{
 		conn:   conn,
 		buf:    buf,
 		decode: json.NewDecoder(conn),
