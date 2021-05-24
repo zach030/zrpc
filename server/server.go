@@ -2,7 +2,7 @@ package server
 
 import (
 	"encoding/json"
-	"gin-master/gin-master"
+	"github.com/gin-gonic/gin"
 	"io"
 	"net"
 	"reflect"
