@@ -7,14 +7,14 @@ const (
 	GobType  = "application/gob"
 )
 
-// call ("service.method", in, out)
+// Header call ("service.method", in, out)
 type Header struct {
 	ServiceMethod string // "Example.New" implement by Go "reflect"
 	Seq           uint64 // request seq number for client
 	Error         string
 }
 
-// codec interface for extension
+// Codec codec interface for extension
 type Codec interface {
 	io.Closer
 	ReadHeader(header *Header) error  // parse header for codec interface
@@ -24,7 +24,7 @@ type Codec interface {
 
 var NewCodecFuncMap map[string]NewCodecFunc
 
-// new-function as a type
+// NewCodecFunc new-function as a type
 type NewCodecFunc func(closer io.ReadWriteCloser) Codec
 
 func init() {

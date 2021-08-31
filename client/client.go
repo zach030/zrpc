@@ -13,7 +13,7 @@ import (
 	"zrpc/logger"
 )
 
-// 客户端：发送请求，接受请求
+// Client 客户端：发送请求，接受请求
 type Client struct {
 	cc          codec.Codec   // 约定的编解码方法
 	opt         *codec.Option // 消息头的opt
@@ -213,7 +213,7 @@ func (c *Client) send(call *Call) {
 	}
 }
 
-// 暴露给客户端的接口，异步接口
+// AsyncCall 暴露给客户端的接口，异步接口
 func (c *Client) AsyncCall(serviceMethod string, args, reply interface{}, done chan *Call) *Call {
 	if done == nil {
 		done = make(chan *Call, 1)
@@ -231,7 +231,7 @@ func (c *Client) AsyncCall(serviceMethod string, args, reply interface{}, done c
 	return call
 }
 
-// 暴露给客户端的接口，同步调用
+// SyncCall 暴露给客户端的接口，同步调用
 func (c *Client) SyncCall(ctx context.Context, serviceMethod string, args, reply interface{}) error {
 	call := c.AsyncCall(serviceMethod, args, reply, make(chan *Call, 1))
 	select {

@@ -22,7 +22,15 @@ type Server struct {
 }
 
 func NewServer() *Server {
-	return &Server{}
+	return &Server{
+		engine: gin.Default(),
+	}
+}
+
+func (s *Server) StartServer() {
+	//r := s.engine.Group("zrpc")
+
+	s.engine.Run(":8009")
 }
 
 func (s *Server) RegisterService(recv interface{}) error {
