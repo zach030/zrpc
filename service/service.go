@@ -99,7 +99,7 @@ func isExportedOrBuiltinType(t reflect.Type) bool {
 	return ast.IsExported(t.Name()) || t.PkgPath() == ""
 }
 
-// 用反射完成函数的调用
+// Call 用反射完成函数的调用
 func (s *Service) Call(m *MethodType, arg, reply reflect.Value) error {
 	// 将方法的使用次数自增
 	atomic.AddUint64(&m.numCalls, 1)

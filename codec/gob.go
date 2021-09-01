@@ -7,7 +7,7 @@ import (
 	"zrpc/logger"
 )
 
-// codec implement by codec func
+// GobCodec codec implement by codec func
 type GobCodec struct {
 	conn   io.ReadWriteCloser
 	buf    *bufio.Writer
@@ -19,7 +19,7 @@ func (g *GobCodec) Close() error {
 	return g.conn.Close()
 }
 
-// decode header part
+// ReadHeader decode header part
 func (g *GobCodec) ReadHeader(header *Header) error {
 	return g.decode.Decode(header)
 }
